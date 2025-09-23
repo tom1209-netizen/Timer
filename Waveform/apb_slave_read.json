@@ -1,0 +1,16 @@
+{
+    "signal": [
+        { "name": "sys_clk", "wave": "p........" },
+        { "name": "sys_rst_n", "wave": "01......." },
+        { "name": "tim_paddr[11:0]", "wave": "=........", "data": ["0x00"] },
+        { "name": "tim_pwdata[31:0]", "wave": "x........" },
+        { "name": "tim_pstrb[3:0]", "wave": "x........" },
+        { "name": "tim_psel", "wave": "0..1..0.." },
+        { "name": "tim_penable", "wave": "0...1.0.." },
+        { "name": "tim_pready", "wave": "0....10.." },
+        { "name": "tim_pwrite", "wave": "1..0....." },
+        { "name": "rd_en", "wave": "0....10.." },
+        { "name": "tim_prdata", "wave": "x....=x..", "data": ["32'h00000100"] }
+    ],
+    "config": { "hscale": 3 }
+}

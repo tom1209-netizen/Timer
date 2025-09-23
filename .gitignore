@@ -1,0 +1,118 @@
+# Report folder ignore
+
+# LaTeX generated files
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.out
+*.bbl
+*.blg
+*.idx
+*.ind
+*.ilg
+*.lol
+*.nav
+*.snm
+*.vrb
+*.figlist
+*.makefile
+*.pdf_tex
+*.dpth
+*.md5
+*.auxlock
+
+# LaTeX intermediate files
+*.fls
+*.fdb_latexmk/
+*.figlist
+*.makefile
+*.auxlock
+
+# Draw.io backup files
+*.$*.drawio.bkp
+*.drawio.bkp
+*.tmp
+
+# Waveform viewer files
+*.vcd
+*.ghw
+*.fst
+*.hier
+
+# Simulation files
+*.wlf
+work/
+transcript
+vsim.wlf
+modelsim.ini
+
+# Synthesis files
+*.bit
+*.mcs
+*.ltx
+*.ngc
+*.edif
+*.xdc
+*.xpr
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+
+# Verification files
+*.log
+*.rpt
+*.html
+coverage/
+urgReport/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Build directories
+build/
+dist/
+bin/
+obj/
+
+# Generated documentation
+doc/html/
+doc/latex/

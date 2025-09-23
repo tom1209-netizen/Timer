@@ -1,0 +1,27 @@
+{
+    "signal": [
+        { "name": "sys_clk", "wave": "p........" },
+        { "name": "sys_rst_n", "wave": "01......." },
+        { "name": "interrupt_en", "wave": "1........" },
+        { "name": "compare_val", "wave": "=........", "data": ["0x00000005"] },
+        {
+            "name": "cnt[63:0]",
+            "wave": "=========",
+            "data": [
+                "0x00000000",
+                "0x00000001",
+                "0x00000002",
+                "0x00000003",
+                "0x00000004",
+                "0x00000005",
+                "0x00000006",
+                "0x00000007",
+                "0x00000008"
+            ]
+        },
+        { "name": "interrupt_clear", "wave": "0.....10." },
+        { "name": "interrupt_status", "wave": "0....1..0" },
+        { "name": "tim_int", "wave": "0....1..0" }
+    ],
+    "config": { "hscale": 3 }
+}

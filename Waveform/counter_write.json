@@ -1,0 +1,24 @@
+{
+    "signal": [
+        { "name": "sys_clk", "wave": "p...." },
+        { "name": "sys_rst_n", "wave": "1...." },
+        { "name": "cnt_en", "wave": "0..10" },
+        {
+            "name": "counter_write_sel[1:0]",
+            "wave": "====.",
+            "data": ["00", "01", "10", "00"]
+        },
+        {
+            "name": "counter_wdata[31:0]",
+            "wave": "x==x.",
+            "data": ["BEEF_BEEF", "DEAD_DEAD"]
+        },
+        { "name": "counter_clear", "wave": "0...." },
+        {
+            "name": "cnt[63:0]",
+            "wave": "=...=",
+            "data": ["0000_0000_0000_0000", "DEAD_DEAD_BEEF_BEF0"]
+        }
+    ],
+    "config": { "hscale": 5 }
+}
