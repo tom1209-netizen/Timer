@@ -1,4 +1,4 @@
-module register_block (
+module register (
     // System Signals
     input wire sys_clk,
     input wire sys_rst_n,

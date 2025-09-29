@@ -1,4 +1,4 @@
-module interrupt_logic (
+module interrupt (
     // System Signals
     input wire sys_clk,
     input wire sys_rst_n,
@@ -25,5 +25,5 @@ module interrupt_logic (
         end
     end
 
-    assign tim_int = interrupt_status_reg && interrupt_en;
+    assign tim_int = interrupt_status && interrupt_en;
 endmodule
