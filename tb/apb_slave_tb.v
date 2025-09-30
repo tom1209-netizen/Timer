@@ -1,5 +1,12 @@
 `timescale 1ns / 1ps
 
+// Color Codes for Console Output
+`define RED     "\033[1;31m"
+`define GREEN   "\033[1;32m"
+`define YELLOW  "\033[1;33m"
+`define CYAN    "\033[1;36m"
+`define RESET   "\033[0m"
+
 module apb_slave_tb;
     reg  sys_clk;
     reg  sys_rst_n;
@@ -28,7 +35,6 @@ module apb_slave_tb;
     );
 
     // Clock Generator
-    // Generate a 100MHz clock (10ns period)
     initial begin
         sys_clk = 0;
         forever #50 sys_clk = ~sys_clk;
@@ -36,99 +42,111 @@ module apb_slave_tb;
 
     // Test Sequence
     initial begin
+        $display(`CYAN);
         $display("------------------------------------");
         $display("--- Starting APB Slave Testbench ---");
-        $display("------------------------------------");
+        $display("------------------------------------", `RESET);
 
         // --- Reset Sequence ---
-        $display("Applying Reset...");
-        tim_psel       <= 0;
-        tim_pwrite     <= 0;
-        tim_penable    <= 0;
+        $display(`YELLOW, "Applying Reset...", `RESET);
+        tim_psel <= 0;
+        tim_pwrite <= 0;
+        tim_penable <= 0;
         reg_error_flag <= 0;
-        sys_rst_n      <= 0; // Assert active-low reset
+        sys_rst_n <= 0;
         #25;
-        sys_rst_n      <= 1; // De-assert reset
-        $display("Reset Released.");
+        sys_rst_n <= 1;
+        $display(`GREEN, "Reset Released.", `RESET);
         #10;
 
         // --- SCENARIO 1: APB Write Transaction (Successful) ---
-        $display("TEST 1: Starting APB Write Transaction...");
+        $display(`CYAN, "TEST 1: Starting APB Write Transaction...", `RESET);
         // SETUP Phase
         @(posedge sys_clk);
-        tim_psel   <= 1;
-        tim_pwrite <= 1; // It's a write
+        tim_psel <= 1;
+        tim_pwrite <= 1; 
+
         // ACCESS Phase
         @(posedge sys_clk);
         tim_penable <= 1;
-        // Wait for transaction to complete (pready is high)
+
+        // Wait
+        @(posedge sys_clk); 
         @(posedge sys_clk);
-        if (tim_pready === 1 && wr_en === 1) begin
-            $display("PASS: Write transaction successful (pready and wr_en asserted).");
-        end else begin
-            $display("FAIL: Write transaction failed.");
-        end
+
+        if (tim_pready === 1 && wr_en === 1)
+            $display(`GREEN, "PASS: Write transaction successful (pready and wr_en asserted).", `RESET);
+        else
+            $display(`RED, "FAIL: Write transaction failed.", `RESET);
+
         // Return to IDLE
         tim_psel    <= 0;
         tim_penable <= 0;
         #20;
 
         // --- SCENARIO 2: APB Read Transaction (Successful) ---
-        $display("TEST 2: Starting APB Read Transaction...");
+        $display(`CYAN, "TEST 2: Starting APB Read Transaction...", `RESET);
         // SETUP Phase
         @(posedge sys_clk);
         tim_psel   <= 1;
-        tim_pwrite <= 0; // It's a read
+        tim_pwrite <= 0; 
+
         // ACCESS Phase
         @(posedge sys_clk);
         tim_penable <= 1;
-        // Wait for transaction to complete
+
+        // Wait
+        @(posedge sys_clk); 
         @(posedge sys_clk);
-        if (tim_pready === 1 && rd_en === 1) begin
-            $display("PASS: Read transaction successful (pready and rd_en asserted).");
-        end else begin
-            $display("FAIL: Read transaction failed.");
-        end
-        // Return to IDLE
+
+        if (tim_pready === 1 && rd_en === 1)
+            $display(`GREEN, "PASS: Read transaction successful (pready and rd_en asserted).", `RESET);
+        else
+            $display(`RED, "FAIL: Read transaction failed.", `RESET);
+
         tim_psel    <= 0;
         tim_penable <= 0;
         #20;
 
         // --- SCENARIO 3: APB Write with Slave Error ---
-        $display("TEST 3: Starting APB Write with Error...");
+        $display(`CYAN, "TEST 3: Starting APB Write with Error...", `RESET);
         @(posedge sys_clk);
         tim_psel       <= 1;
         tim_pwrite     <= 1;
-        reg_error_flag <= 1; // Trigger an error
+        reg_error_flag <= 1; 
+
         @(posedge sys_clk);
         tim_penable    <= 1;
+
         @(posedge sys_clk);
-        if (tim_pslverr === 1) begin
-            $display("PASS: Slave error correctly asserted (pslverr is high).");
-        end else begin
-            $display("FAIL: Slave error not asserted.");
-        end
+        @(posedge sys_clk);
+
+        if (tim_pslverr === 1)
+            $display(`GREEN, "PASS: Slave error correctly asserted (pslverr is high).", `RESET);
+        else
+            $display(`RED, "FAIL: Slave error not asserted.", `RESET);
+
         tim_psel       <= 0;
         tim_penable    <= 0;
         reg_error_flag <= 0;
         #20;
 
         // --- SCENARIO 4: Aborted Transaction ---
-        $display("TEST 4: Starting Aborted Transaction...");
+        $display(`CYAN, "TEST 4: Starting Aborted Transaction...", `RESET);
         @(posedge sys_clk);
-        tim_psel <= 1; // Start a transaction
-        @(posedge sys_clk);
-        // Abort by de-selecting before penable goes high
-        tim_psel <= 0;
-        @(posedge sys_clk);
-        if (tim_pready === 0) begin
-             $display("PASS: Transaction correctly aborted (pready remained low).");
-        end else begin
-             $display("FAIL: Transaction was not aborted.");
-        end
-        #20;
+        tim_psel <= 1;
 
-        $display("--- All tests complete. Finishing simulation. ---");
+        @(posedge sys_clk);
+        tim_psel <= 0; // Abort
+
+        @(posedge sys_clk);
+
+        if (tim_pready === 0)
+            $display(`GREEN, "PASS: Transaction correctly aborted (pready remained low).", `RESET);
+        else
+            $display(`RED, "FAIL: Transaction was not aborted.", `RESET);
+
+        $display(`CYAN, "--- All tests complete. Finishing simulation. ---", `RESET);
         $finish;
     end
 

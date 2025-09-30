@@ -45,9 +45,9 @@ module apb_slave (
     end
 
     // Output Logic
-    assign tim_pready  = (current_state_reg == ACCESS);
+    assign tim_pready  = (current_state_reg == ACCESS) && tim_penable && tim_psel;
     
-    assign wr_en = tim_pready &&  tim_pwrite;
+    assign wr_en = tim_pready && tim_pwrite;
     assign rd_en = tim_pready && !tim_pwrite;
 
     assign tim_pslverr = tim_pready && reg_error_flag;
