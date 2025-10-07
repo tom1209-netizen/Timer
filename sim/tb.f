@@ -1,1 +1,1 @@
-../tb/apb_slave_tb.v
+../tb/test_bench.v

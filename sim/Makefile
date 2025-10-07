@@ -1,6 +1,6 @@
 #Define variables
-TESTNAME ?= apb_slave_tb
-TB_NAME  ?= apb_slave_tb
+TESTNAME ?= test_bench
+TB_NAME  ?= test_bench
 RADIX    ?= hex
 
 #==========================================
@@ -14,10 +14,11 @@ drc:
 build:
 	vlib work
 	vmap work work
-	vlog -f compile.f | tee compile.log
+	vlog +acc -debugdb -f compile.f | tee compile.log
 
 run:
 	vsim -c -quiet -onfinish stop \
+	     -debugdb \
 	     -voptargs=+acc \
 	     -l $(TESTNAME).log \
 	     work.$(TB_NAME) \
