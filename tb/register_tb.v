@@ -36,6 +36,10 @@ module register_tb;
     wire interrupt_clear;
     wire reg_error_flag;
 
+    // Reg to save the result
+    reg error_flag_reg;
+    reg interrupt_clear_reg;
+
     // --- Instantiate the Design Under Test (DUT) ---
     register dut (
         .sys_clk(sys_clk),
@@ -110,70 +114,103 @@ module register_tb;
 
         // --- Reset Sequence ---
         $display(`YELLOW, "Applying Reset...", `RESET);
-        wr_en <= 0; rd_en <= 0; tim_paddr <= 0; tim_pwdata <= 0; tim_pstrb <= 0;
-        cnt_val <= 0; halt_ack_status <= 0; interrupt_status <= 0;
+        wr_en <= 0; 
+        rd_en <= 0; 
+        tim_paddr <= 0; 
+        tim_pwdata <= 0; 
+        tim_pstrb <= 0;
+        cnt_val <= 0; 
+        halt_ack_status <= 0; 
+        interrupt_status <= 0;
         sys_rst_n <= 0;
+        error_flag_reg <= 0;
         #25;
+
         sys_rst_n <= 1;
         $display(`GREEN, "Reset Released.", `RESET);
         #10;
 
-        // // --- SCENARIO 1: Basic Register Write and Read ---
-        // $display(`CYAN, "TEST 1: Verifying basic write/read (TCMP0)...", `RESET);
-        // write_reg(12'h00C, 32'h12345678, 4'hF);
-        // read_reg(12'h00C);
+        // --- SCENARIO 1: Basic Register Write and Read ---
+        $display(`CYAN, "TEST 1: Verifying basic write/read (TCMP0)...", `RESET);
+        write_reg(12'h00C, 32'h12345678, 4'hF);
+        read_reg(12'h00C);
         
-        // if (tim_prdata === 32'h12345678)
-        //     $display(`GREEN, "PASS: Correctly read back the value written to TCMP0.", `RESET);
-        // else
-        //     $display(`RED, "FAIL: Read incorrect value from TCMP0. Expected 32'h12345678, got %h", tim_prdata, `RESET);
-        // #20;
+        if (tim_prdata === 32'h12345678)
+            $display(`GREEN, "PASS: Correctly read back the value written to TCMP0.", `RESET);
+        else
+            $display(`RED, "FAIL: Read incorrect value from TCMP0. Expected 32'h12345678, got %h", tim_prdata, `RESET);
+        #20;
 
-        // // --- SCENARIO 2: Reading a Status Register ---
-        // $display(`CYAN, "TEST 2: Verifying read from status register (TDR0)...", `RESET);
-        // cnt_val <= 64'hAAAABBBB_C0C0DADA;
-        // read_reg(12'h004); // Read TDR0
+        // --- SCENARIO 2: Reading a Status Register ---
+        $display(`CYAN, "TEST 2: Verifying read from status register (TDR0)...", `RESET);
+        cnt_val <= 64'hAAAABBBB_C0C0DADA;
+        read_reg(12'h004); // Read TDR0
         
-        // if (tim_prdata === 32'hC0C0DADA)
-        //     $display(`GREEN, "PASS: Correctly read cnt_val[31:0] through TDR0.", `RESET);
-        // else
-        //     $display(`RED, "FAIL: Incorrect value from TDR0. Expected 32'hC0C0DADA, got %h", tim_prdata, `RESET);
-        // #20;
+        if (tim_prdata === 32'hC0C0DADA)
+            $display(`GREEN, "PASS: Correctly read cnt_val[31:0] through TDR0.", `RESET);
+        else
+            $display(`RED, "FAIL: Incorrect value from TDR0. Expected 32'hC0C0DADA, got %h", tim_prdata, `RESET);
+        #20;
 
         // --- SCENARIO 3: Checking a Command Output ---
         $display(`CYAN, "TEST 3: Verifying interrupt_clear command generation...", `RESET);
         write_reg(12'h018, 32'h00000001, 4'h1); // Write 1 to TISR
+        @(posedge sys_clk);
+        wr_en     <= 1'b1;
+        rd_en     <= 1'b0;
+        tim_paddr <= 12'h018;
+        tim_pwdata <= 32'h00000001;
+        tim_pstrb <= 4'h1;
+
+        @(posedge sys_clk);
+        wr_en     <= 1'b0;
+        tim_paddr <= 12'h0;
+        tim_pwdata <= 32'h0;
+        tim_pstrb <= 4'h0;
+        interrupt_clear_reg <= interrupt_clear;
 
         #1; // Small delay to allow signal propagation
-        if (interrupt_clear === 1'b1)
+        if (interrupt_clear_reg === 1'b1)
             $display(`GREEN, "PASS: interrupt_clear pulsed high during write to TISR.", `RESET);
         else
             $display(`RED, "FAIL: interrupt_clear did not pulse high.", `RESET);
         #20;
 
-        // // --- SCENARIO 4: Checking Control Outputs ---
-        // $display(`CYAN, "TEST 4: Verifying control signal outputs from TCR write...", `RESET);
-        // write_reg(12'h000, 32'h00000503, 4'hF); // timer_en=1, div_en=1, div_val=5
-        // #1; 
+        // --- SCENARIO 4: Checking Control Outputs ---
+        $display(`CYAN, "TEST 4: Verifying control signal outputs from TCR write...", `RESET);
+        write_reg(12'h000, 32'h00000503, 4'hF); // timer_en=1, div_en=1, div_val=5
+        #1; 
         
-        // if (timer_en === 1'b1 && div_en === 1'b1 && div_val === 4'h5)
-        //     $display(`GREEN, "PASS: Control outputs correctly reflect TCR value.", `RESET);
-        // else
-        //     $display(`RED, "FAIL: Control outputs mismatch. timer_en=%b, div_en=%b, div_val=%h", timer_en, div_en, div_val, `RESET);
-        // #20;
+        if (timer_en === 1'b1 && div_en === 1'b1 && div_val === 4'h5)
+            $display(`GREEN, "PASS: Control outputs correctly reflect TCR value.", `RESET);
+        else
+            $display(`RED, "FAIL: Control outputs mismatch. timer_en=%b, div_en=%b, div_val=%h", timer_en, div_en, div_val, `RESET);
+        #20;
 
-        // // --- SCENARIO 5: Checking Error Flag Generation ---
-        // $display(`CYAN, "TEST 5: Verifying reg_error_flag generation...", `RESET);
-        // // Condition: timer_en is already 1 from the previous test. Now try to write div_val again.
-        // write_reg(12'h000, 32'h00000603, 4'hF);
-        // #1;
+        // --- SCENARIO 5: Checking Error Flag Generation ---
+        $display(`CYAN, "TEST 5: Verifying reg_error_flag generation...", `RESET);
+        // Condition: timer_en is already 1 from the previous test. Now try to write div_val again.
+        @(posedge sys_clk);
+        wr_en     <= 1'b1;
+        rd_en     <= 1'b0;
+        tim_paddr <= 12'h000;
+        tim_pwdata <= 32'h00000603;
+        tim_pstrb <= 4'hF;
 
-        // if (reg_error_flag === 1'b1)
-        //     $display(`GREEN, "PASS: reg_error_flag correctly asserted on illegal write.", `RESET);
-        // else
-        //     $display(`RED, "FAIL: reg_error_flag was not asserted on illegal write.", `RESET);
-        // @(posedge sys_clk);
-        // #20;
+        @(posedge sys_clk);
+        wr_en     <= 1'b0;
+        tim_paddr <= 12'h0;
+        tim_pwdata <= 32'h0;
+        tim_pstrb <= 4'h0;
+        error_flag_reg <= reg_error_flag;
+        #1;
+
+        if (error_flag_reg === 1'b1)
+            $display(`GREEN, "PASS: reg_error_flag correctly asserted on illegal write.", `RESET);
+        else
+            $display(`RED, "FAIL: reg_error_flag was not asserted on illegal write.", `RESET);
+        @(posedge sys_clk);
+        #20;
 
         $display(`CYAN, "--- All tests complete. Finishing simulation. ---", `RESET);
         $finish;

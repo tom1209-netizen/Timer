@@ -33,6 +33,7 @@ module register (
     // Error Output to apb_slave
     output wire reg_error_flag
 );
+    // Register Address Map
     localparam TCR_ADDR = 12'h000;
     localparam TDR0_ADDR = 12'h004;
     localparam TDR1_ADDR = 12'h008;
@@ -42,6 +43,7 @@ module register (
     localparam TISR_ADDR = 12'h018;
     localparam THCSR_ADDR = 12'h01C;
 
+    // Address Decoding
     wire tcr_sel = (tim_paddr == TCR_ADDR);
     wire tdr0_sel = (tim_paddr == TDR0_ADDR);
     wire tdr1_sel = (tim_paddr == TDR1_ADDR);
@@ -51,6 +53,15 @@ module register (
     wire tisr_sel = (tim_paddr == TISR_ADDR);
     wire thcsr_sel = (tim_paddr == THCSR_ADDR);
 
+    // Internal Signals 
+    wire is_timer_running;
+    wire write_to_tcr_div;
+    wire prohibited_div_val;
+
+    // Read Mux
+    reg [31:0] read_mux_out;
+
+    // Registers
     reg [31:0] tcr_reg;
     reg [31:0] tcmp0_reg;
     reg [31:0] tcmp1_reg;
@@ -58,6 +69,7 @@ module register (
     reg [31:0] thcsr_reg;
     reg timer_en_dly;
 
+    // Register Write Logic
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             tcr_reg <= {20'h0, 4'b0001, 6'b0, 1'b0, 1'b0};
@@ -67,8 +79,8 @@ module register (
             thcsr_reg <= 32'h0;
         end else if (wr_en && !reg_error_flag) begin
             if (tcr_sel) begin
-                if (tim_pstrb[0]) tcr_reg[7:0] <= tim_pwdata[7:0];
-                if (tim_pstrb[1]) tcr_reg[15:8] <= tim_pwdata[15:8];
+                if (tim_pstrb[0]) tcr_reg[1:0] <= tim_pwdata[1:0];
+                if (tim_pstrb[1]) tcr_reg[11:8] <= tim_pwdata[11:8];
             end
 
             if (tcmp0_sel) begin
@@ -95,6 +107,7 @@ module register (
         end
     end
 
+    // Delay timer_en to detect falling edge for counter_clear
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             timer_en_dly <= 1'b0;
@@ -103,8 +116,7 @@ module register (
         end
     end
 
-    reg [31:0] read_mux_out;
-
+    // Read Mux Logic
     always @(*) begin
         read_mux_out = 32'h0;
         case (tim_paddr)
@@ -132,10 +144,6 @@ module register (
     assign counter_write_sel[1] = wr_en && tdr1_sel;
     assign counter_write_data = tim_pwdata;
     assign interrupt_clear = wr_en && tisr_sel && tim_pwdata[0];
-
-    wire is_timer_running;
-    wire write_to_tcr_div;
-    wire prohibited_div_val;
 
     assign is_timer_running = tcr_reg[0];
     assign write_to_tcr_div = wr_en && tcr_sel && (tim_pstrb[0] || tim_pstrb[1]);
