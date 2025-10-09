@@ -55,7 +55,7 @@ module register (
 
     // Internal Signals 
     wire is_timer_running;
-    wire write_to_tcr_div;
+    wire attempt_to_change_div_settings;
     wire prohibited_div_val;
 
     // Read Mux
@@ -72,37 +72,45 @@ module register (
     // Register Write Logic
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
-            tcr_reg <= {20'h0, 4'b0001, 6'b0, 1'b0, 1'b0};
+            tcr_reg   <= {20'h0, 4'b0001, 6'b0, 1'b0, 1'b0};
             tcmp0_reg <= 32'hFFFF_FFFF;
             tcmp1_reg <= 32'hFFFF_FFFF;
-            tier_reg <= 32'h0;
+            tier_reg  <= 32'h0;
             thcsr_reg <= 32'h0;
-        end else if (wr_en && !reg_error_flag) begin
+        end else if (wr_en) begin 
             if (tcr_sel) begin
-                if (tim_pstrb[0]) tcr_reg[1:0] <= tim_pwdata[1:0];
-                if (tim_pstrb[1]) tcr_reg[11:8] <= tim_pwdata[11:8];
+                if (tim_pstrb[0]) begin
+                    tcr_reg[0] <= tim_pwdata[0];
+                end
+
+                if (!reg_error_flag) begin
+                    if (tim_pstrb[0]) tcr_reg[1] <= tim_pwdata[1];
+                    if (tim_pstrb[1]) tcr_reg[11:8] <= tim_pwdata[11:8];
+                end
             end
 
-            if (tcmp0_sel) begin
-                if (tim_pstrb[0]) tcmp0_reg[7:0] <= tim_pwdata[7:0];
-                if (tim_pstrb[1]) tcmp0_reg[15:8] <= tim_pwdata[15:8];
-                if (tim_pstrb[2]) tcmp0_reg[23:16] <= tim_pwdata[23:16];
-                if (tim_pstrb[3]) tcmp0_reg[31:24] <= tim_pwdata[31:24];
-            end
+            if (!reg_error_flag) begin
+                if (tcmp0_sel) begin
+                    if (tim_pstrb[0]) tcmp0_reg[7:0]   <= tim_pwdata[7:0];
+                    if (tim_pstrb[1]) tcmp0_reg[15:8]  <= tim_pwdata[15:8];
+                    if (tim_pstrb[2]) tcmp0_reg[23:16] <= tim_pwdata[23:16];
+                    if (tim_pstrb[3]) tcmp0_reg[31:24] <= tim_pwdata[31:24];
+                end
 
-            if (tcmp1_sel) begin
-                if (tim_pstrb[0]) tcmp1_reg[7:0] <= tim_pwdata[7:0];
-                if (tim_pstrb[1]) tcmp1_reg[15:8] <= tim_pwdata[15:8];
-                if (tim_pstrb[2]) tcmp1_reg[23:16] <= tim_pwdata[23:16];
-                if (tim_pstrb[3]) tcmp1_reg[31:24] <= tim_pwdata[31:24];
-            end
+                if (tcmp1_sel) begin
+                    if (tim_pstrb[0]) tcmp1_reg[7:0]   <= tim_pwdata[7:0];
+                    if (tim_pstrb[1]) tcmp1_reg[15:8]  <= tim_pwdata[15:8];
+                    if (tim_pstrb[2]) tcmp1_reg[23:16] <= tim_pwdata[23:16];
+                    if (tim_pstrb[3]) tcmp1_reg[31:24] <= tim_pwdata[31:24];
+                end
 
-            if (tier_sel) begin
-                if (tim_pstrb[0]) tier_reg[0] <= tim_pwdata[0];
-            end
+                if (tier_sel) begin
+                    if (tim_pstrb[0]) tier_reg[0] <= tim_pwdata[0];
+                end
 
-            if (thcsr_sel) begin
-                if (tim_pstrb[0]) thcsr_reg[0] <= tim_pwdata[0];
+                if (thcsr_sel) begin
+                    if (tim_pstrb[0]) thcsr_reg[0] <= tim_pwdata[0];
+                end
             end
         end
     end
@@ -145,11 +153,21 @@ module register (
     assign counter_write_data = tim_pwdata;
     assign interrupt_clear = wr_en && tisr_sel && tim_pwdata[0];
 
+    // Condition 1: Attempting to change div_en or div_val while timer is running
     assign is_timer_running = tcr_reg[0];
-    assign write_to_tcr_div = wr_en && tcr_sel && (tim_pstrb[0] || tim_pstrb[1]);
+
+    // Check if the incoming write data for div_en/div_val is different from the current value
+    wire attempt_to_change_div_en  = tim_pstrb[0] && (tim_pwdata[1]    != tcr_reg[1]);
+    wire attempt_to_change_div_val = tim_pstrb[1] && (tim_pwdata[11:8] != tcr_reg[11:8]);
+
+    // This is the specific error condition
+    assign attempt_to_change_div_settings = wr_en && tcr_sel && (attempt_to_change_div_en || attempt_to_change_div_val);
+    
+    // Condition 2: Writing a prohibited value to div_val
     assign prohibited_div_val = wr_en && tcr_sel && tim_pstrb[1] && (tim_pwdata[11:8] > 4'b1000);
 
-    assign reg_error_flag = (is_timer_running && write_to_tcr_div) || prohibited_div_val;
+    // The final error flag is the OR of the specific error conditions
+    assign reg_error_flag = (is_timer_running && attempt_to_change_div_settings) || prohibited_div_val;
 
 endmodule
 
