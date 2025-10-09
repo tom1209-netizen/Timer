@@ -79,11 +79,8 @@ module register (
             thcsr_reg <= 32'h0;
         end else if (wr_en) begin 
             if (tcr_sel) begin
-                if (tim_pstrb[0]) begin
-                    tcr_reg[0] <= tim_pwdata[0];
-                end
-
                 if (!reg_error_flag) begin
+                    if (tim_pstrb[0]) tcr_reg[0] <= tim_pwdata[0];
                     if (tim_pstrb[0]) tcr_reg[1] <= tim_pwdata[1];
                     if (tim_pstrb[1]) tcr_reg[11:8] <= tim_pwdata[11:8];
                 end
