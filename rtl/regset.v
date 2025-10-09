@@ -154,8 +154,9 @@ module register (
     assign is_timer_running = tcr_reg[0];
 
     // Check if the incoming write data for div_en/div_val is different from the current value
-    wire attempt_to_change_div_en  = tim_pstrb[0] && (tim_pwdata[1]    != tcr_reg[1]);
-    wire attempt_to_change_div_val = tim_pstrb[1] && (tim_pwdata[11:8] != tcr_reg[11:8]);
+    // But allow change if timer_en is being set to 0
+    wire attempt_to_change_div_en  = tim_pstrb[0] && (tim_pwdata[1]    !== tcr_reg[1]) && (tim_pwdata[0] == 1'b0);
+    wire attempt_to_change_div_val = tim_pstrb[1] && (tim_pwdata[11:8] !== tcr_reg[11:8]) && (tim_pwdata[0] == 1'b0);
 
     // This is the specific error condition
     assign attempt_to_change_div_settings = wr_en && tcr_sel && (attempt_to_change_div_en || attempt_to_change_div_val);
