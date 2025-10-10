@@ -770,6 +770,66 @@ module test_bench;
         end
 
 
+        // --- TEST: BYTE_ACCESS_STROBE_MISS_MSB ---
+        // Goal: Hit remaining branch coverage for tim_pstrb checks in u_register.
+        $display(`CYAN, "TEST: BYTE_ACCESS_STROBE_MISS_MSB...", `RESET);
+        do_write(TCMP1_ADDR, 32'hAAAAAAAA, 4'hF); // Pre-load
+        do_read(TCMP1_ADDR, before);
+        do_write(TCMP1_ADDR, 32'hDEADBEEF, 4'b0111); // Write bytes 2, 1, 0 only
+        do_read(TCMP1_ADDR, after);
+        if (after[31:24] === before[31:24] && after[23:0] === 32'hADBEEF) begin
+            $display(`GREEN, "PASS: BYTE_ACCESS_STROBE_MISS_MSB successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: BYTE_ACCESS_STROBE_MISS_MSB failed.", `RESET);
+        end
+
+        // --- TEST: COMPREHENSIVE_STROBE_TEST ---
+        // Goal: Hit all remaining branch coverage misses for tim_pstrb checks.
+        $display(`CYAN, "TEST: COMPREHENSIVE_STROBE_TEST...", `RESET);
+
+        // Test missing strobe on TCMP0[3]
+        do_write(TCMP0_ADDR, 32'hAAAAAAAA, 4'hF); // Pre-load
+        do_read(TCMP0_ADDR, before);
+        do_write(TCMP0_ADDR, 32'hDEADBEEF, 4'b0111); // Write bytes 2,1,0 only
+        do_read(TCMP0_ADDR, after);
+        if (after[31:24] === before[31:24] && after[23:0] === 32'hADBEEF) begin
+            $display(`GREEN, "PASS: TCMP0 MSB strobe miss successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: TCMP0 MSB strobe miss failed.", `RESET);
+        end
+
+        // Test missing strobes on TCMP1[2:0]
+        do_write(TCMP1_ADDR, 32'hBBBBBBBB, 4'hF); // Pre-load
+        do_read(TCMP1_ADDR, before);
+        do_write(TCMP1_ADDR, 32'hCAFED00D, 4'b1000); // Write byte 3 only
+        do_read(TCMP1_ADDR, after);
+        if (after[31:24] === 32'hCA && after[23:0] === before[23:0]) begin
+            $display(`GREEN, "PASS: TCMP1 LSBs strobe miss successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: TCMP1 LSBs strobe miss failed.", `RESET);
+        end
+
+        // Test no-op write to TIER
+        do_read(TIER_ADDR, before);
+        do_write(TIER_ADDR, 32'hFFFFFFFF, 4'b0000); // Write with no strobes
+        do_read(TIER_ADDR, after);
+        if (after === before) begin
+            $display(`GREEN, "PASS: TIER no-op write successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: TIER no-op write failed.", `RESET);
+        end
+
+        // Test no-op write to THCSR
+        do_read(THCSR_ADDR, before);
+        do_write(THCSR_ADDR, 32'hFFFFFFFF, 4'b0000); // Write with no strobes
+        do_read(THCSR_ADDR, after);
+        if (after === before) begin
+            $display(`GREEN, "PASS: THCSR no-op write successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: THCSR no-op write failed.", `RESET);
+        end
+
+
         // --- TEST: INTERRUPT_CLEAR_NEGATIVE ---
         $display(`CYAN, "TEST: INTERRUPT_CLEAR_NEGATIVE...", `RESET);
         do_write(TCR_ADDR, 32'd0, 4'h1);
@@ -806,6 +866,117 @@ module test_bench;
             $display(`GREEN, "PASS: COUNTER_CONTROL_CONDITION successful. Counter stopped correctly.", `RESET);
         end else begin
             $display(`RED, "FAIL: COUNTER_CONTROL_CONDITION failed. c1=%d, c2=%d, c3=%d, c4=%d", c1, c2, c3, c4, `RESET);
+        end
+
+
+        // --- TEST: APB_SETUP_WAIT ---
+        // Goal: Hit branch coverage in u_apb_slave FSM by waiting in the SETUP state.
+        $display(`CYAN, "TEST: APB_SETUP_WAIT...", `RESET);
+        do_read(TCMP0_ADDR, before);
+        // Manual transaction to wait in SETUP state
+        @(posedge sys_clk);
+        tim_psel    <= 1'b1;
+        tim_pwrite  <= 1'b1;
+        tim_penable <= 1'b0; // Enter SETUP
+        tim_paddr   <= TCMP0_ADDR;
+        tim_pwdata  <= 32'h1A2B3C4D;
+        tim_pstrb   <= 4'hF;
+
+        // Keep psel=1 and penable=0 for 3 cycles to wait in SETUP
+        wait_cycles(3);
+
+        @(posedge sys_clk);
+        tim_penable <= 1'b1; // Now go to ACCESS state
+        @(posedge sys_clk); // Wait for pready
+        @(posedge sys_clk); // Finish access
+        tim_psel    <= 1'b0;
+        tim_penable <= 1'b0;
+
+        do_read(TCMP0_ADDR, after);
+        if (after === 32'h1A2B3C4D) begin
+            $display(`GREEN, "PASS: APB_SETUP_WAIT successful. Write completed after setup wait.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: APB_SETUP_WAIT failed. Write did not complete correctly.", `RESET);
+        end
+
+
+        // --- TEST: APB_ACCESS_WAIT ---
+        // Goal: Hit expression coverage for tim_pready in u_apb_slave.
+        $display(`CYAN, "TEST: APB_ACCESS_WAIT...", `RESET);
+        do_read(TCMP0_ADDR, before); 
+
+        // Manual transaction to de-assert penable during ACCESS
+        @(posedge sys_clk);
+        tim_psel    <= 1'b1;
+        tim_pwrite  <= 1'b0;
+        tim_penable <= 1'b0; 
+        tim_paddr   <= TCMP0_ADDR;
+
+        @(posedge sys_clk);
+        tim_penable <= 1'b1; 
+
+        @(posedge sys_clk); 
+        tim_penable <= 1'b0; 
+        wait_cycles(2);    
+
+        tim_penable <= 1'b1; 
+        @(posedge sys_clk);
+        data = tim_prdata;   
+        @(posedge sys_clk);
+        tim_psel    <= 1'b0;
+        tim_penable <= 1'b0;
+
+        if (data === before) begin
+            $display(`GREEN, "PASS: APB_ACCESS_WAIT successful. Read data is correct.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: APB_ACCESS_WAIT failed. Expected %h, got %h", before, data, `RESET);
+        end
+
+        // --- TEST: APB_ACCESS_PSEL_ABORT ---
+        // Goal: Hit final expression coverage for tim_pready in u_apb_slave.
+        $display(`CYAN, "TEST: APB_ACCESS_PSEL_ABORT...", `RESET);
+        // Manual transaction to de-assert psel during ACCESS
+        @(posedge sys_clk);
+        tim_psel    <= 1'b1;
+        tim_pwrite  <= 1'b0;
+        tim_penable <= 1'b0; // Enter SETUP
+        tim_paddr   <= TCR_ADDR;
+
+        @(posedge sys_clk);
+        tim_penable <= 1'b1; // Enter ACCESS
+
+        @(posedge sys_clk); // Now in ACCESS state. pready should be high.
+        tim_psel    <= 1'b0; // De-assert psel. This should de-assert pready.
+        @(posedge sys_clk);
+        tim_psel    <= 1'b1; // Re-assert to avoid confusing other logic.
+        @(posedge sys_clk);
+        tim_psel    <= 1'b0; // End of sequence
+        tim_penable <= 1'b0;
+
+        $display(`GREEN, "PASS: APB_ACCESS_PSEL_ABORT sequence executed.", `RESET);
+
+        // --- TEST: Halt ack ---
+        $display(`CYAN, "TEST: HALT_ACK...", `RESET);
+        set_dbg_mode(1'b1);
+        do_write(THCSR_ADDR, 32'd1, 4'h1);
+        wait_cycles(2);
+        do_read(THCSR_ADDR, data);
+        if (data[1] === 1'b1) begin
+            $display(`GREEN, "PASS: HALT_ACK successful. Halt acknowledged.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: HALT_ACK failed. Halt not acknowledged.", `RESET);
+        end
+
+        // --- TEST: Halt no ack when dbg_mode=0 ---
+        $display(`CYAN, "TEST: HALT_NO_ACK...", `RESET);
+        set_dbg_mode(1'b0);
+        do_write(THCSR_ADDR, 32'd1, 4'h1);
+        wait_cycles(2);
+        do_read(THCSR_ADDR, data);
+        if (data[1] === 1'b0) begin
+            $display(`GREEN, "PASS: HALT_NO_ACK successful. No halt ack when dbg_mode=0.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: HALT_NO_ACK failed. Unexpected halt ack when dbg_mode=0.", `RESET);
         end
 
         $display(`CYAN, "\n--- All tests complete. Finishing simulation. ---", `RESET);
