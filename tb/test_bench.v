@@ -53,6 +53,9 @@ module test_bench;
     reg [31:0] c1;
     reg [31:0] c2;
     reg [31:0] c3;
+    reg [31:0] c4;
+
+    reg toggle_test_passed;
 
     // --- Instantiate the Design Under Test (DUT) ---
     timer_top dut (
@@ -96,9 +99,7 @@ module test_bench;
             @(posedge sys_clk);
             tim_penable <= 1'b1;
 
-            while (tim_pready === 1'b0) begin
-                @(posedge sys_clk);
-            end
+            @(posedge sys_clk);
 
             @(posedge sys_clk);
             tim_psel    <= 1'b0;
@@ -121,15 +122,33 @@ module test_bench;
             @(posedge sys_clk);
             tim_penable <= 1'b1;
 
-            while (tim_pready === 1'b0) begin
-                @(posedge sys_clk);
-            end
+            @(posedge sys_clk);
 
             captured_data = tim_prdata;
 
             @(posedge sys_clk);
             tim_psel    <= 1'b0;
             tim_penable <= 1'b0;
+        end
+    endtask
+
+    task do_write_aborted;
+        input [11:0] addr;
+        input [31:0] data;
+        input [3:0]  strb;
+        begin
+            @(posedge sys_clk);
+            // SETUP phase
+            tim_psel    <= 1'b1;
+            tim_pwrite  <= 1'b1;
+            tim_penable <= 1'b0;
+            tim_paddr   <= addr;
+            tim_pwdata  <= data;
+            tim_pstrb   <= strb;
+            @(posedge sys_clk);
+            // De-assert psel to abort transaction
+            tim_psel    <= 1'b0;
+            @(posedge sys_clk);
         end
     endtask
 
@@ -205,16 +224,28 @@ module test_bench;
         $display(`CYAN, "TEST: BYTE_ACCESS_TCR...", `RESET);
 
         do_read (TCR_ADDR, before);
-        do_write(TCR_ADDR, 32'hxxxx05xx, 4'b0010);
+        do_write(TCR_ADDR, 32'hxxxx01xx, 4'b0010);
         do_read (TCR_ADDR, after);
 
-        if ( after[11:8]   === 4'h5 &&
+        if ( after[11:8]   === 4'h1 &&
              after[7:0]    === before[7:0] &&
              after[31:12]  === before[31:12] ) begin
             $display(`GREEN, "PASS: BYTE_ACCESS_TCR successful.", `RESET);
         end else begin
             $display(`RED, "FAIL: BYTE_ACCESS_TCR failed.", `RESET);
         end
+
+        // --- TEST: BYTE_ACCESS_TCMP_COMBINED ---
+        $display(`CYAN, "TEST: BYTE_ACCESS_TCMP_COMBINED...", `RESET);
+        do_read (TCMP0_ADDR, before);
+        do_write(TCMP0_ADDR, 32'hAABBCCDD, 4'b1001); // Write MSB and LSB
+        do_read (TCMP0_ADDR, after);
+        if ( after[31:24] === 8'hAA && after[7:0] === 8'hDD && after[23:8] === before[23:8] ) begin
+            $display(`GREEN, "PASS: BYTE_ACCESS_TCMP_COMBINED successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: BYTE_ACCESS_TCMP_COMBINED failed.", `RESET);
+        end
+
 
         // --- TEST: RO_READ_TDR ---
         $display(`CYAN, "TEST: RO_READ_TDR...", `RESET);
@@ -233,33 +264,142 @@ module test_bench;
         end
 
         // --- TEST: COUNT_DEFAULT_MODE ---
-        $display(`CYAN, "TEST: COUNT_DEFAULT_MODE...", `RESET);
-
+        $display(`CYAN, "%0t TEST: COUNT_DEFAULT_MODE...", $realtime, `RESET);
+        // enable the timer_en and div_en
+        do_write(TCR_ADDR, 32'h1, 4'h1);
         do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h1, 4'h1);
         wait_cycles(10);
-        do_read (TDR0_ADDR, count);
+        do_read(TDR0_ADDR, count);
 
-        if (count === 32'd10) begin
+        if (count === (32'd10 + 32'd02)) begin
             $display(`GREEN, "PASS: COUNT_DEFAULT_MODE successful.", `RESET);
         end else begin
-            $display(`RED, "FAIL: COUNT_DEFAULT_MODE failed. Expected 10, got %0d", count, `RESET);
+            $display(`RED, "FAIL: COUNT_DEFAULT_MODE failed. Expected 12, got %0d", count, `RESET);
+        end
+
+        // --- TEST: COUNT_DIV_MODE_ZERO ---
+        $display(`CYAN, "%0t TEST: COUNT_DIV_MODE_ZERO...", $realtime, `RESET);
+        do_write(TCR_ADDR, 32'h0, 4'h1);      // Disable timer
+        do_write(TCR_ADDR, 32'h0000, 4'h2);   // Set div_val = 0
+        do_write(TCR_ADDR, 32'h3, 4'h1);      // Enable timer_en and div_en
+        wait_cycles(15);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd15 + 32'd02)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE_ZERO successful. Counter increments every cycle.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE_ZERO failed. Expected 17, got %0d", count, `RESET);
         end
 
         // --- TEST: COUNT_DIV_MODE ---
-        $display(`CYAN, "TEST: COUNT_DIV_MODE...", `RESET);
-
+        $display(`CYAN, "%0t TEST: COUNT_DIV_MODE...", $realtime, `RESET);
+        // div_val = 2
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0100, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(10);
-        do_read (TDR0_ADDR, count);
+        do_read(TDR0_ADDR, count);
 
-        if (count === 32'd5) begin
-            $display(`GREEN, "PASS: COUNT_DIV_MODE successful.", `RESET);
+        if (count === (32'd5 + 32'd1)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=2 successful.", `RESET);
         end else begin
-            $display(`RED, "FAIL: COUNT_DIV_MODE failed. Expected 5, got %0d", count, `RESET);
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=2 failed. Expected 6, got %0d", count, `RESET);
+        end
+
+        // div_val = 4
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0200, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(20);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=4 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=4 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 8
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0300, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(40);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=8 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=8 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 16
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0400, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(80);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=16 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=16 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 32
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0500, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(160);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=32 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=32 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 64
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0600, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(320);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=64 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=64 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 128
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0700, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(640);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=128 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=128 failed. Expected 5, got %0d", count, `RESET);
+        end
+
+        // div_val = 256
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0800, 4'h2);
+        do_write(TCR_ADDR, 32'h3, 4'h1);
+        wait_cycles(1280);
+        do_read(TDR0_ADDR, count);
+
+        if (count === (32'd5)) begin
+            $display(`GREEN, "PASS: COUNT_DIV_MODE div_val=256 successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNT_DIV_MODE div_val=256 failed. Expected 5, got %0d", count, `RESET);
         end
 
         // --- TEST: COUNT_CLEAR_ON_DISABLE ---
-        $display(`CYAN, "TEST: COUNT_CLEAR_ON_DISABLE...", `RESET);
+        $display(`CYAN, "%0t TEST: COUNT_CLEAR_ON_DISABLE...", $realtime, `RESET);
 
         do_write(TCR_ADDR, 32'h1, 4'h1);
         wait_cycles(5);
@@ -291,10 +431,11 @@ module test_bench;
         do_write(TCR_ADDR,   32'd0, 4'h1);
         do_write(TDR0_ADDR,  32'd9, 4'hF);
         do_write(TCMP0_ADDR, 32'd10, 4'hF);
+        do_write(TCMP1_ADDR, 32'd0, 4'hF);
         do_write(TIER_ADDR,  32'd1, 4'h1);
         do_write(TCR_ADDR,   32'd1, 4'h1);
 
-        wait_cycles(2);
+        wait_cycles(3);
 
         if (tim_int === 1'b1) begin
             $display(`GREEN, "PASS: INTERRUPT triggered.", `RESET);
@@ -385,7 +526,7 @@ module test_bench;
         do_write(THCSR_ADDR, 32'd0, 4'h1); // clean up
 
         // --- TEST: ERROR_FLAG_TIMER_RUNNING & PROHIBITED_VAL ---
-        $display(`CYAN, "TEST: ERROR_FLAG_TIMER_RUNNING...", `RESET);
+        $display(`CYAN, "%0t TEST: ERROR_FLAG_TIMER_RUNNING...", $realtime, `RESET);
 
         do_write(TCR_ADDR, 32'd1, 4'h1);
         do_read (TCR_ADDR, before);
@@ -404,17 +545,14 @@ module test_bench;
         @(posedge sys_clk);
         tim_penable <= 1'b1;
 
-        while (tim_pready === 1'b0) begin
-            @(posedge sys_clk);
-        end
+        @(posedge sys_clk);
+        @(posedge sys_clk);
 
         if (tim_pslverr === 1'b1) begin
             $display(`GREEN, "PASS: pslverr asserted.", `RESET);
         end else begin
             $display(`RED, "FAIL: pslverr not asserted.", `RESET);
         end
-
-        @(posedge sys_clk);
 
         tim_psel    <= 1'b0;
         tim_penable <= 1'b0;
@@ -434,9 +572,6 @@ module test_bench;
 
         // illegal div_val = 0xF
         do_write(TCR_ADDR, 32'h00000F00, 4'hF);
-
-        // Assuming the do_write completes and we can check the slave's previous error state
-        #1;
 
         if (tim_pslverr) begin
             $display(`GREEN, "PASS: pslverr asserted on prohibited value write.", `RESET);
@@ -473,6 +608,204 @@ module test_bench;
             $display(`GREEN, "PASS: INVALID_ADDR_WRITE successful.", `RESET);
         end else begin
             $display(`RED, "FAIL: INVALID_ADDR_WRITE failed.", `RESET);
+        end
+
+        // --- TEST: ERROR_CONCURRENT ---
+        $display(`CYAN, "%0t TEST: ERROR_CONCURRENT...", $realtime, `RESET);
+        do_write(TCR_ADDR, 32'd1, 4'h1); 
+
+        // Manual transaction to trigger concurrent errors (change div_val while running AND use prohibited value)
+        @(posedge sys_clk);
+        tim_psel    <= 1'b1;
+        tim_pwrite  <= 1'b1;
+        tim_penable <= 1'b0;
+        tim_paddr   <= TCR_ADDR;
+        tim_pwdata  <= 32'h00000F01; 
+        tim_pstrb   <= 4'hF;
+        @(posedge sys_clk);
+        tim_penable <= 1'b1;
+        @(posedge sys_clk);
+        @(posedge sys_clk);
+        if (tim_pslverr === 1'b1) begin
+            $display(`GREEN, "PASS: pslverr asserted for concurrent errors.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: pslverr not asserted for concurrent errors.", `RESET);
+        end
+        tim_psel    <= 1'b0;
+        tim_penable <= 1'b0;
+        do_write(TCR_ADDR, 32'd0, 4'h1); 
+
+        // --- TEST: COUNT_ROLLOVER_32B ---
+        $display(`CYAN, "TEST: COUNT_ROLLOVER_32B...", `RESET);
+        do_write(TCR_ADDR, 32'd0, 4'h1); 
+        do_write(TDR0_ADDR, 32'hFFFFFFFF, 4'hF);
+        do_write(TDR1_ADDR, 32'h00000000, 4'hF);
+        do_write(TCR_ADDR, 32'd1, 4'h1); 
+        wait_cycles(5);
+        do_read(TDR0_ADDR, tdr0);
+        do_read(TDR1_ADDR, tdr1);
+        if ( tdr0 === (32'd4 + 32'd2) && tdr1 === 32'd1 ) begin
+             $display(`GREEN, "PASS: COUNT_ROLLOVER_32B successful.", `RESET);
+        end else begin
+             $display(`RED, "FAIL: COUNT_ROLLOVER_32B failed. Expected {1, 6}, got {%0h, %0h}", tdr1, tdr0, `RESET);
+        end
+        do_write(TCR_ADDR, 32'd0, 4'h1); 
+
+        // --- TEST: INTERRUPT_CLEAR_PRIORITY ---
+        $display(`CYAN, "TEST: INTERRUPT_CLEAR_PRIORITY...", `RESET);
+        do_write(TCR_ADDR, 32'd0, 4'h1); 
+        do_write(TISR_ADDR, 32'd1, 4'h1); 
+        do_write(TCMP0_ADDR, 32'd10, 4'hF);
+        do_write(TIER_ADDR, 32'd1, 4'h1);
+        do_write(TDR0_ADDR, 32'd10, 4'hF); 
+        do_write(TCR_ADDR, 32'd1, 4'h1); 
+        wait_cycles(2);
+        do_write(TISR_ADDR, 32'd1, 4'h1);
+        do_read(TISR_ADDR, data);
+        if (data[0] === 1'b0 && tim_int === 1'b0) begin
+            $display(`GREEN, "PASS: INTERRUPT_CLEAR_PRIORITY successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: INTERRUPT_CLEAR_PRIORITY failed.", `RESET);
+        end
+        do_write(TCR_ADDR, 32'd0, 4'h1); 
+
+        // --- TEST: APB_ABORT ---
+        $display(`CYAN, "TEST: APB_ABORT...", `RESET);
+        do_read(TCMP0_ADDR, before);
+        do_write_aborted(TCMP0_ADDR, 32'hABADCAFE, 4'hF);
+        do_read(TCMP0_ADDR, after);
+        if (before === after) begin
+            $display(`GREEN, "PASS: APB_ABORT successful, register unchanged.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: APB_ABORT failed, register was modified.", `RESET);
+        end
+
+        // --- TEST: APB_BACK_TO_BACK ---
+        $display(`CYAN, "TEST: APB_BACK_TO_BACK...", `RESET);
+        // Manual back-to-back Write -> Read transaction
+        // Txn 1: Write to TCMP1
+        @(posedge sys_clk);
+        tim_pwrite  <= 1'b1;
+        tim_psel    <= 1'b1;
+        tim_penable <= 1'b0;
+        tim_paddr   <= TCMP1_ADDR;
+        tim_pwdata  <= 32'hCAFED00D;
+        tim_pstrb   <= 4'hF;
+        @(posedge sys_clk);
+        tim_penable <= 1'b1; 
+        @(posedge sys_clk); 
+        @(posedge sys_clk); 
+
+        // Txn 2: Read from TCMP1
+        tim_pwrite  <= 1'b0;
+        tim_penable <= 1'b0; 
+        tim_paddr   <= TCMP1_ADDR;
+        @(posedge sys_clk);
+        tim_penable <= 1'b1; 
+        @(posedge sys_clk);
+        data = tim_prdata; 
+        @(posedge sys_clk);
+        tim_psel    <= 1'b0; 
+        tim_penable <= 1'b0;
+        if (data === 32'hCAFED00D) begin
+            $display(`GREEN, "PASS: APB_BACK_TO_BACK successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: APB_BACK_TO_BACK failed. Expected CAFED00D, got %0h", data, `RESET);
+        end
+
+        // --- TEST: MAX_VALUE_TOGGLE ---
+        $display(`CYAN, "TEST: MAX_VALUE_TOGGLE...", `RESET);
+        toggle_test_passed = 1'b1;
+        do_write(TCR_ADDR, 32'd0, 4'h1);
+        
+        do_write(TCMP0_ADDR, 32'h00000000, 4'hF);
+        do_write(TCMP0_ADDR, 32'hFFFFFFFF, 4'hF);
+        do_read(TCMP0_ADDR, data);
+        if (data !== 32'hFFFFFFFF) toggle_test_passed = 1'b0;
+
+        do_write(TCMP1_ADDR, 32'h00000000, 4'hF);
+        do_write(TCMP1_ADDR, 32'hFFFFFFFF, 4'hF);
+        do_read(TCMP1_ADDR, data);
+        if (data !== 32'hFFFFFFFF) toggle_test_passed = 1'b0;
+
+        do_write(TDR0_ADDR, 32'h00000000, 4'hF);
+        do_write(TDR0_ADDR, 32'hFFFFFFFF, 4'hF);
+        do_read(TDR0_ADDR, data);
+        if (data !== 32'hFFFFFFFF) toggle_test_passed = 1'b0;
+
+        do_write(TDR1_ADDR, 32'h00000000, 4'hF);
+        do_write(TDR1_ADDR, 32'hFFFFFFFF, 4'hF);
+        do_read(TDR1_ADDR, data);
+        if (data !== 32'hFFFFFFFF) toggle_test_passed = 1'b0;
+
+        if (toggle_test_passed) begin
+            $display(`GREEN, "PASS: MAX_VALUE_TOGGLE successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: MAX_VALUE_TOGGLE failed. Readback value incorrect.", `RESET);
+        end
+
+
+        // --- TEST: DIV_VAL_TOGGLE ---
+        $display(`CYAN, "TEST: DIV_VAL_TOGGLE...", `RESET);
+        do_write(TCR_ADDR, 32'h0800, 4'h2); // Set div_val = 8 (binary 1000)
+        do_write(TCR_ADDR, 32'h0100, 4'h2); // Set div_val = 1 (binary 0001)
+        do_read(TCR_ADDR, data); // *** ADDED CHECKER LOGIC ***
+        if (data[11:8] === 4'h1) begin
+            $display(`GREEN, "PASS: DIV_VAL_TOGGLE successful.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: DIV_VAL_TOGGLE failed. div_val was not set correctly.", `RESET);
+        end
+
+
+        // --- TEST: BYTE_ACCESS_STROBE_MISS ---
+        $display(`CYAN, "TEST: BYTE_ACCESS_STROBE_MISS...", `RESET);
+        do_write(TCMP0_ADDR, 32'hAAAAAAAA, 4'hF);
+        do_read(TCMP0_ADDR, before);
+        do_write(TCMP0_ADDR, 32'hDEADBEEF, 4'b1110);
+        do_read(TCMP0_ADDR, after);
+        if (after[7:0] === before[7:0] && after[31:8] === 32'hDEADBE) begin
+            $display(`GREEN, "PASS: BYTE_ACCESS_STROBE_MISS successful. Byte 0 was not written.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: BYTE_ACCESS_STROBE_MISS failed. Expected %h, got %h", {before[31:8], 8'hEF}, after, `RESET);
+        end
+
+
+        // --- TEST: INTERRUPT_CLEAR_NEGATIVE ---
+        $display(`CYAN, "TEST: INTERRUPT_CLEAR_NEGATIVE...", `RESET);
+        do_write(TCR_ADDR, 32'd0, 4'h1);
+        do_write(TCMP0_ADDR, 32'd5, 4'hF);
+        do_write(TDR0_ADDR, 32'd5, 4'hF);
+        do_write(TCR_ADDR, 32'd1, 4'h1);
+        wait_cycles(2);
+        do_read(TISR_ADDR, before);
+        do_write(TISR_ADDR, 32'd0, 4'h1);
+        do_read(TISR_ADDR, after);
+        if (before[0] === 1'b1 && after[0] === 1'b1) begin
+            $display(`GREEN, "PASS: INTERRUPT_CLEAR_NEGATIVE successful. Writing 0 did not clear status.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: INTERRUPT_CLEAR_NEGATIVE failed.", `RESET);
+        end
+        do_write(TISR_ADDR, 32'd1, 4'h1);
+
+
+        // --- TEST: COUNTER_CONTROL_CONDITION ---
+        $display(`CYAN, "TEST: COUNTER_CONTROL_CONDITION...", `RESET);
+        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0203, 4'h3); // timer_en=1, div_en=1, div_val=2
+        wait_cycles(10);
+        do_read(TDR0_ADDR, c1);
+        wait_cycles(10);
+        do_read(TDR0_ADDR, c2); // c2 should be > c1
+        
+        do_write(TCR_ADDR, 32'h0202, 4'h1); // De-assert timer_en
+        do_read(TDR0_ADDR, c3); // Read value immediately after disable
+        wait_cycles(10);
+        do_read(TDR0_ADDR, c4); // Read value after waiting
+        
+        if (c2 > c1 && c3 === c4) begin
+            $display(`GREEN, "PASS: COUNTER_CONTROL_CONDITION successful. Counter stopped correctly.", `RESET);
+        end else begin
+            $display(`RED, "FAIL: COUNTER_CONTROL_CONDITION failed. c1=%d, c2=%d, c3=%d, c4=%d", c1, c2, c3, c4, `RESET);
         end
 
         $display(`CYAN, "\n--- All tests complete. Finishing simulation. ---", `RESET);
