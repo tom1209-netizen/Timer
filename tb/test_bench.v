@@ -190,7 +190,7 @@ module test_bench;
         #10;
 
         // --- TEST: RESET_DEFAULTS ---
-        $display(`CYAN, "TEST: RESET_DEFAULTS...", `RESET);
+        $display(`CYAN, "%0t TEST: RESET_DEFAULTS...", $realtime, `RESET);
 
         do_read(TCR_ADDR,   tcr);
         do_read(TCMP0_ADDR, tcmp0);
@@ -209,7 +209,7 @@ module test_bench;
         end
 
         // --- TEST: RW_ACCESS_TCMP ---
-        $display(`CYAN, "TEST: RW_ACCESS_TCMP...", `RESET);
+        $display(`CYAN, "%0t TEST: RW_ACCESS_TCMP...", $realtime, `RESET);
 
         do_write(TCMP0_ADDR, 32'hDEADBEEF, 4'hF);
         do_read (TCMP0_ADDR, data);
@@ -221,7 +221,7 @@ module test_bench;
         end
 
         // --- TEST: BYTE_ACCESS_TCR ---
-        $display(`CYAN, "TEST: BYTE_ACCESS_TCR...", `RESET);
+        $display(`CYAN, "%0t TEST: BYTE_ACCESS_TCR...", $realtime, `RESET);
 
         do_read (TCR_ADDR, before);
         do_write(TCR_ADDR, 32'hxxxx01xx, 4'b0010);
@@ -236,7 +236,7 @@ module test_bench;
         end
 
         // --- TEST: BYTE_ACCESS_TCMP_COMBINED ---
-        $display(`CYAN, "TEST: BYTE_ACCESS_TCMP_COMBINED...", `RESET);
+        $display(`CYAN, "%0t TEST: BYTE_ACCESS_TCMP_COMBINED...", $realtime, `RESET);
         do_read (TCMP0_ADDR, before);
         do_write(TCMP0_ADDR, 32'hAABBCCDD, 4'b1001); // Write MSB and LSB
         do_read (TCMP0_ADDR, after);
@@ -248,7 +248,7 @@ module test_bench;
 
 
         // --- TEST: RO_READ_TDR ---
-        $display(`CYAN, "TEST: RO_READ_TDR...", `RESET);
+        $display(`CYAN, "%0t TEST: RO_READ_TDR...", $realtime, `RESET);
 
         do_write(TDR1_ADDR, 32'hAAAABBBB, 4'hF);
         do_write(TDR0_ADDR, 32'h12345678, 4'hF);
@@ -413,7 +413,7 @@ module test_bench;
         end
 
         // --- TEST: COUNT_DIRECT_WRITE ---
-        $display(`CYAN, "TEST: COUNT_DIRECT_WRITE...", `RESET);
+        $display(`CYAN, "%0t TEST: COUNT_DIRECT_WRITE...", $realtime, `RESET);
 
         do_write(TCR_ADDR, 32'd0,       4'h1);
         do_write(TDR0_ADDR, 32'hC0DECAFE, 4'hF);
@@ -426,7 +426,7 @@ module test_bench;
         end
 
         // --- TEST: INTERRUPT_TRIGGER_STICKY & CLEAR & MASK ---
-        $display(`CYAN, "TEST: INTERRUPT_TRIGGER_STICKY...", `RESET);
+        $display(`CYAN, "%0t TEST: INTERRUPT_TRIGGER_STICKY...", $realtime, `RESET);
 
         do_write(TCR_ADDR,   32'd0, 4'h1);
         do_write(TDR0_ADDR,  32'd9, 4'hF);
@@ -452,7 +452,7 @@ module test_bench;
             $display(`RED, "FAIL: INTERRUPT status is not sticky.", `RESET);
         end
 
-        $display(`CYAN, "TEST: INTERRUPT_MASK...", `RESET);
+        $display(`CYAN, "%0t TEST: INTERRUPT_MASK...", $realtime, `RESET);
 
         do_write(TIER_ADDR, 32'd0, 4'h1);
         #1;
@@ -464,7 +464,7 @@ module test_bench;
             $display(`RED, "FAIL: INTERRUPT_MASK failed.", `RESET);
         end
 
-        $display(`CYAN, "TEST: INTERRUPT_CLEAR...", `RESET);
+        $display(`CYAN, "%0t TEST: INTERRUPT_CLEAR...", $realtime, `RESET);
 
         do_write(TISR_ADDR, 32'd1, 4'h1);
         do_read (TISR_ADDR, data);
@@ -476,7 +476,7 @@ module test_bench;
         end
 
         // --- TEST: HALT_BASIC & HALT_RESUME & HALT_NEGATIVE ---
-        $display(`CYAN, "TEST: HALT_BASIC...", `RESET);
+        $display(`CYAN, "%0t TEST: HALT_BASIC...", $realtime, `RESET);
 
         do_write(TCR_ADDR, 32'd1, 4'h1);
         wait_cycles(5);
@@ -495,7 +495,7 @@ module test_bench;
             $display(`RED, "FAIL: HALT_BASIC failed.", `RESET);
         end
 
-        $display(`CYAN, "TEST: HALT_RESUME...", `RESET);
+        $display(`CYAN, "%0t TEST: HALT_RESUME...", $realtime, `RESET);
 
         do_write(THCSR_ADDR, 32'd0, 4'h1);
         wait_cycles(10);
@@ -508,7 +508,7 @@ module test_bench;
             $display(`RED, "FAIL: HALT_RESUME failed.", `RESET);
         end
 
-        $display(`CYAN, "TEST: HALT_NEGATIVE...", `RESET);
+        $display(`CYAN, "%0t TEST: HALT_NEGATIVE...", $realtime, `RESET);
 
         set_dbg_mode(1'b0);
         do_write(THCSR_ADDR, 32'd1, 4'h1);
@@ -565,7 +565,7 @@ module test_bench;
             $display(`RED, "FAIL: Register changed after error.", `RESET);
         end
 
-        $display(`CYAN, "TEST: ERROR_FLAG_PROHIBITED_VAL...", `RESET);
+        $display(`CYAN, "%0t TEST: ERROR_FLAG_PROHIBITED_VAL...", $realtime, `RESET);
 
         do_write(TCR_ADDR, 32'd0, 4'h1);
         do_read (TCR_ADDR, before);
@@ -588,7 +588,7 @@ module test_bench;
         end
 
         // --- TEST: INVALID_ADDR_READ & WRITE ---
-        $display(`CYAN, "TEST: INVALID_ADDR_READ...", `RESET);
+        $display(`CYAN, "%0t TEST: INVALID_ADDR_READ...", $realtime, `RESET);
 
         do_read(INVALID_ADDR, data);
 
@@ -636,7 +636,7 @@ module test_bench;
         do_write(TCR_ADDR, 32'd0, 4'h1); 
 
         // --- TEST: COUNT_ROLLOVER_32B ---
-        $display(`CYAN, "TEST: COUNT_ROLLOVER_32B...", `RESET);
+        $display(`CYAN, "%0t TEST: COUNT_ROLLOVER_32B...", $realtime, `RESET);
         do_write(TCR_ADDR, 32'd0, 4'h1); 
         do_write(TDR0_ADDR, 32'hFFFFFFFF, 4'hF);
         do_write(TDR1_ADDR, 32'h00000000, 4'hF);
@@ -652,7 +652,7 @@ module test_bench;
         do_write(TCR_ADDR, 32'd0, 4'h1); 
 
         // --- TEST: INTERRUPT_CLEAR_PRIORITY ---
-        $display(`CYAN, "TEST: INTERRUPT_CLEAR_PRIORITY...", `RESET);
+        $display(`CYAN, "%0t TEST: INTERRUPT_CLEAR_PRIORITY...", $realtime, `RESET);
         do_write(TCR_ADDR, 32'd0, 4'h1); 
         do_write(TISR_ADDR, 32'd1, 4'h1); 
         do_write(TCMP0_ADDR, 32'd10, 4'hF);
@@ -670,7 +670,7 @@ module test_bench;
         do_write(TCR_ADDR, 32'd0, 4'h1); 
 
         // --- TEST: APB_ABORT ---
-        $display(`CYAN, "TEST: APB_ABORT...", `RESET);
+        $display(`CYAN, "%0t TEST: APB_ABORT...", $realtime, `RESET);
         do_read(TCMP0_ADDR, before);
         do_write_aborted(TCMP0_ADDR, 32'hABADCAFE, 4'hF);
         do_read(TCMP0_ADDR, after);
@@ -681,7 +681,7 @@ module test_bench;
         end
 
         // --- TEST: APB_BACK_TO_BACK ---
-        $display(`CYAN, "TEST: APB_BACK_TO_BACK...", `RESET);
+        $display(`CYAN, "%0t TEST: APB_BACK_TO_BACK...", $realtime, `RESET);
         // Manual back-to-back Write -> Read transaction
         // Txn 1: Write to TCMP1
         @(posedge sys_clk);
@@ -714,7 +714,7 @@ module test_bench;
         end
 
         // --- TEST: MAX_VALUE_TOGGLE ---
-        $display(`CYAN, "TEST: MAX_VALUE_TOGGLE...", `RESET);
+        $display(`CYAN, "%0t TEST: MAX_VALUE_TOGGLE...", $realtime, `RESET);
         toggle_test_passed = 1'b1;
         do_write(TCR_ADDR, 32'd0, 4'h1);
         
@@ -746,7 +746,7 @@ module test_bench;
 
 
         // --- TEST: DIV_VAL_TOGGLE ---
-        $display(`CYAN, "TEST: DIV_VAL_TOGGLE...", `RESET);
+        $display(`CYAN, "%0t TEST: DIV_VAL_TOGGLE...", $realtime, `RESET);
         do_write(TCR_ADDR, 32'h0800, 4'h2); // Set div_val = 8 (binary 1000)
         do_write(TCR_ADDR, 32'h0100, 4'h2); // Set div_val = 1 (binary 0001)
         do_read(TCR_ADDR, data); // *** ADDED CHECKER LOGIC ***
@@ -758,7 +758,7 @@ module test_bench;
 
 
         // --- TEST: BYTE_ACCESS_STROBE_MISS ---
-        $display(`CYAN, "TEST: BYTE_ACCESS_STROBE_MISS...", `RESET);
+        $display(`CYAN, "%0t TEST: BYTE_ACCESS_STROBE_MISS...", $realtime, `RESET);
         do_write(TCMP0_ADDR, 32'hAAAAAAAA, 4'hF);
         do_read(TCMP0_ADDR, before);
         do_write(TCMP0_ADDR, 32'hDEADBEEF, 4'b1110);
@@ -772,7 +772,7 @@ module test_bench;
 
         // --- TEST: BYTE_ACCESS_STROBE_MISS_MSB ---
         // Goal: Hit remaining branch coverage for tim_pstrb checks in u_register.
-        $display(`CYAN, "TEST: BYTE_ACCESS_STROBE_MISS_MSB...", `RESET);
+        $display(`CYAN, "%0t TEST: BYTE_ACCESS_STROBE_MISS_MSB...", $realtime, `RESET);
         do_write(TCMP1_ADDR, 32'hAAAAAAAA, 4'hF); // Pre-load
         do_read(TCMP1_ADDR, before);
         do_write(TCMP1_ADDR, 32'hDEADBEEF, 4'b0111); // Write bytes 2, 1, 0 only
@@ -785,7 +785,7 @@ module test_bench;
 
         // --- TEST: COMPREHENSIVE_STROBE_TEST ---
         // Goal: Hit all remaining branch coverage misses for tim_pstrb checks.
-        $display(`CYAN, "TEST: COMPREHENSIVE_STROBE_TEST...", `RESET);
+        $display(`CYAN, "%0t TEST: COMPREHENSIVE_STROBE_TEST...", $realtime, `RESET);
 
         // Test missing strobe on TCMP0[3]
         do_write(TCMP0_ADDR, 32'hAAAAAAAA, 4'hF); // Pre-load
@@ -831,7 +831,7 @@ module test_bench;
 
 
         // --- TEST: INTERRUPT_CLEAR_NEGATIVE ---
-        $display(`CYAN, "TEST: INTERRUPT_CLEAR_NEGATIVE...", `RESET);
+        $display(`CYAN, "%0t TEST: INTERRUPT_CLEAR_NEGATIVE...", $realtime, `RESET);
         do_write(TCR_ADDR, 32'd0, 4'h1);
         do_write(TCMP0_ADDR, 32'd5, 4'hF);
         do_write(TDR0_ADDR, 32'd5, 4'hF);
@@ -849,7 +849,7 @@ module test_bench;
 
 
         // --- TEST: COUNTER_CONTROL_CONDITION ---
-        $display(`CYAN, "TEST: COUNTER_CONTROL_CONDITION...", `RESET);
+        $display(`CYAN, "%0t TEST: COUNTER_CONTROL_CONDITION...", $realtime, `RESET);
         do_write(TCR_ADDR, 32'h0, 4'h1);
         do_write(TCR_ADDR, 32'h0203, 4'h3); // timer_en=1, div_en=1, div_val=2
         wait_cycles(10);
@@ -871,7 +871,7 @@ module test_bench;
 
         // --- TEST: APB_SETUP_WAIT ---
         // Goal: Hit branch coverage in u_apb_slave FSM by waiting in the SETUP state.
-        $display(`CYAN, "TEST: APB_SETUP_WAIT...", `RESET);
+        $display(`CYAN, "%0t TEST: APB_SETUP_WAIT...", $realtime, `RESET);
         do_read(TCMP0_ADDR, before);
         // Manual transaction to wait in SETUP state
         @(posedge sys_clk);
@@ -902,7 +902,7 @@ module test_bench;
 
         // --- TEST: APB_ACCESS_WAIT ---
         // Goal: Hit expression coverage for tim_pready in u_apb_slave.
-        $display(`CYAN, "TEST: APB_ACCESS_WAIT...", `RESET);
+        $display(`CYAN, "%0t TEST: APB_ACCESS_WAIT...", $realtime, `RESET);
         do_read(TCMP0_ADDR, before); 
 
         // Manual transaction to de-assert penable during ACCESS
@@ -934,7 +934,7 @@ module test_bench;
 
         // --- TEST: APB_ACCESS_PSEL_ABORT ---
         // Goal: Hit final expression coverage for tim_pready in u_apb_slave.
-        $display(`CYAN, "TEST: APB_ACCESS_PSEL_ABORT...", `RESET);
+        $display(`CYAN, "%0t TEST: APB_ACCESS_PSEL_ABORT...", $realtime, `RESET);
         // Manual transaction to de-assert psel during ACCESS
         @(posedge sys_clk);
         tim_psel    <= 1'b1;
@@ -956,7 +956,7 @@ module test_bench;
         $display(`GREEN, "PASS: APB_ACCESS_PSEL_ABORT sequence executed.", `RESET);
 
         // --- TEST: Halt ack ---
-        $display(`CYAN, "TEST: HALT_ACK...", `RESET);
+        $display(`CYAN, "%0t TEST: HALT_ACK...", $realtime, `RESET);
         set_dbg_mode(1'b1);
         do_write(THCSR_ADDR, 32'd1, 4'h1);
         wait_cycles(2);
@@ -968,7 +968,7 @@ module test_bench;
         end
 
         // --- TEST: Halt no ack when dbg_mode=0 ---
-        $display(`CYAN, "TEST: HALT_NO_ACK...", `RESET);
+        $display(`CYAN, "%0t TEST: HALT_NO_ACK...", $realtime, `RESET);
         set_dbg_mode(1'b0);
         do_write(THCSR_ADDR, 32'd1, 4'h1);
         wait_cycles(2);
