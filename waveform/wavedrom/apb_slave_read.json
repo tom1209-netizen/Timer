@@ -10,7 +10,8 @@
         { "name": "tim_pready", "wave": "0....10.." },
         { "name": "tim_pwrite", "wave": "1..0....." },
         { "name": "rd_en", "wave": "0....10.." },
-        { "name": "tim_prdata", "wave": "x....=x..", "data": ["32'h00000100"] }
+        { "name": "tim_prdata", "wave": "x....=x..", "data": ["32'h00000100"] },
+        { "name": "tim_pslverr", "wave": "0........" }
     ],
     "config": { "hscale": 3 }
 }
