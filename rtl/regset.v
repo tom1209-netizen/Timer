@@ -161,7 +161,7 @@ module register (
         endcase
     end
 
-    assign tim_prdata = read_mux_out;
+    assign tim_prdata = rd_en ? read_mux_out : 32'h0;
 
     assign timer_en = tcr_reg[0];
     assign div_en = tcr_reg[1];
