@@ -59,7 +59,6 @@ module register (
     wire attempt_to_change_div_en;
     wire attempt_to_change_div_val;
     wire prohibited_div_val;
-    wire clearing_timer;
 
     // Read Mux
     reg [31:0] read_mux_out;
@@ -179,14 +178,12 @@ module register (
     assign is_timer_running = tcr_reg[0];
 
     // Check if the incoming write data for div_en/div_val is different from the current value
-    // But allow change if timer_en is being set to 0
-    assign clearing_timer = tim_pstrb[0] && (tim_pwdata[0] == 1'b0);
     assign attempt_to_change_div_en  = tim_pstrb[0] && (tim_pwdata[1]    !== tcr_reg[1]);
     assign attempt_to_change_div_val = tim_pstrb[1] && (tim_pwdata[11:8] !== tcr_reg[11:8]);
 
     // This is the specific error condition
     assign attempt_to_change_div_settings =
-        wr_en && tcr_sel && (attempt_to_change_div_en || attempt_to_change_div_val) && !clearing_timer;
+        wr_en && tcr_sel && (attempt_to_change_div_en || attempt_to_change_div_val);
     
     // Condition 2: Writing a prohibited value to div_val
     assign prohibited_div_val = wr_en && tcr_sel && tim_pstrb[1] && (tim_pwdata[11:8] > 4'b1000);

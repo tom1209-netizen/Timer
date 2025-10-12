@@ -30,9 +30,9 @@ module counter_control (
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             divisor_counter <= 8'd0;
-        end else if (!timer_en || !div_en || is_limit) begin
+        end else if (!timer_en || !div_en || (is_limit && !halt_ack_status)) begin
             divisor_counter <= 8'd0;
-        end else begin
+        end else if (timer_en && div_en && !halt_ack_status) begin
             divisor_counter <= divisor_counter + 1;
         end
     end
