@@ -72,6 +72,8 @@ module register (
     reg [31:0] thcsr_reg;
     reg timer_en_dly;
 
+    reg [31:0] tdr_write_data_muxed;
+
     // Register Write Logic
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
@@ -124,6 +126,26 @@ module register (
         end
     end
 
+    // Logic to construct byte-accessible write data for TDR0/TDR1 ***
+    always @(*) begin
+        if (tdr0_sel) begin
+            // For a write to TDR0, use the lower 32 bits of the live counter value
+            tdr_write_data_muxed[7:0]   = tim_pstrb[0] ? tim_pwdata[7:0]   : cnt_val[7:0];
+            tdr_write_data_muxed[15:8]  = tim_pstrb[1] ? tim_pwdata[15:8]  : cnt_val[15:8];
+            tdr_write_data_muxed[23:16] = tim_pstrb[2] ? tim_pwdata[23:16] : cnt_val[23:16];
+            tdr_write_data_muxed[31:24] = tim_pstrb[3] ? tim_pwdata[31:24] : cnt_val[31:24];
+        end else if (tdr1_sel) begin
+            // For a write to TDR1, use the upper 32 bits of the live counter value
+            tdr_write_data_muxed[7:0]   = tim_pstrb[0] ? tim_pwdata[7:0]   : cnt_val[39:32];
+            tdr_write_data_muxed[15:8]  = tim_pstrb[1] ? tim_pwdata[15:8]  : cnt_val[47:40];
+            tdr_write_data_muxed[23:16] = tim_pstrb[2] ? tim_pwdata[23:16] : cnt_val[55:48];
+            tdr_write_data_muxed[31:24] = tim_pstrb[3] ? tim_pwdata[31:24] : cnt_val[63:56];
+        end else begin
+            // Default assignment
+            tdr_write_data_muxed = tim_pwdata;
+        end
+    end
+
     // Read Mux Logic
     always @(*) begin
         read_mux_out = 32'h0;
@@ -150,7 +172,7 @@ module register (
     assign counter_clear = timer_en_dly && !tcr_reg[0];
     assign counter_write_sel[0] = wr_en && tdr0_sel;
     assign counter_write_sel[1] = wr_en && tdr1_sel;
-    assign counter_write_data = tim_pwdata;
+    assign counter_write_data = tdr_write_data_muxed;
     assign interrupt_clear = wr_en && tisr_sel && tim_pwdata[0];
 
     // Condition 1: Attempting to change div_en or div_val while timer is running
