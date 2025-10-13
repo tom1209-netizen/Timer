@@ -1,5 +1,6 @@
-../rtl/regset.v
+../rtl/register.v
 ../rtl/counter.v
-../rtl/apbif.v
-../rtl/cnt_ctrl.v
+../rtl/apb_slave.v
+../rtl/counter_control.v
+../rtl/interrupt.v
 ../rtl/timer_top.v
