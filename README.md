@@ -69,7 +69,6 @@ The repository is organized into the following directories:
 ```[]
 .
 ├── block_diagram/ # Contains the IP's block diagram image
-├── report/       # Coverage reports and other files
 ├── rtl/          # All RTL source files (Verilog)
 ├── sim/          # Simulation scripts and environment
 ├── tb/           # Testbench files
