@@ -52,7 +52,7 @@ The key features include:
 
 ### 1.3. Block Diagram
 
-![Top level diagram](../block_diagram/top_level.png)
+![Top level diagram](./block_diagram/top_level.png)
 
 The top-level architecture of the Timer IP consists of five main sub-modules
 
@@ -104,20 +104,20 @@ The `apb_slave` module acts as the bridge between the system's APB bus and the t
 
 #### Logic Diagram
 
-![APB slave logic diagram](../block_diagram/apb_slave.png)
+![APB slave logic diagram](./block_diagram/apb_slave.png)
 
 The logic consists of a state register for the FSM and combinational logic that generates the outputs (`tim_pready`, `tim_pslverr`, `wr_en`, `rd_en`) based on the current state and the APB inputs.
 
 #### Waveform Analysis
 
 APB Write:
-![APB Write waveform](../waveform/image/apb_slave_write.png)
+![APB Write waveform](./waveform/image/apb_slave_write.png)
 
 APB Read:
-![APB Read waveform](../waveform/image/apb_slave_read.png)
+![APB Read waveform](./waveform/image/apb_slave_read.png)
 
 APB Write Error:
-![APB Write error waveform](../waveform/image/apb_slave_write_error.png)
+![APB Write error waveform](./waveform/image/apb_slave_write_error.png)
 
 We show three waveform, write, read and write error which is typical of apb interface
 
@@ -171,19 +171,19 @@ The `counter_control` module's sole purpose is to generate the final, qualified 
 
 #### Logic Diagram
 
-![Logic Diagram of Counter Control module](../block_diagram/counter_control.png)
+![Logic Diagram of Counter Control module](./block_diagram/counter_control.png)
 
 #### Waveform Analysis
 
 This waveform demonstrates how the `cnt_en` pulse frequency changes based on different `div_val` settings, directly affecting the speed of the main counter.
 
-![Counter Control waveform with div val = 1](../waveform/image/counter_control_div1.png)
+![Counter Control waveform with div val = 1](./waveform/image/counter_control_div1.png)
 **div\_val = 1 (Divide by 2)**: The internal divisor counter's limit is $(2^1-1) = 1$. It counts `0, 1`. A `cnt_en` pulse is generated every **2** clock cycles.
 
-![Counter Control waveform with div val = 2](../waveform/image/counter_control_div2.png)
+![Counter Control waveform with div val = 2](./waveform/image/counter_control_div2.png)
 **div\_val = 2 (Divide by 4)**: The limit is $(2^2-1) = 3$. The internal counter counts `0, 1, 2, 3`. A `cnt_en` pulse is generated every **4** clock cycles.
 
-![Counter Control waveform with div val = 3](../waveform/image/counter_control_div3.png)
+![Counter Control waveform with div val = 3](./waveform/image/counter_control_div3.png)
 **div\_val = 3 (Divide by 8)**: The limit is $(2^3-1) = 7$. A `cnt_en` pulse is generated every **8** clock cycles, causing the main counter to increment at one-eighth the speed of the system clock.
 
 ### 3.4. Counter (`counter`)
@@ -210,13 +210,13 @@ The `counter` module is a straightforward 64-bit register block that serves as t
 
 #### Logic Diagram
 
-![Counter Logic Diagram](../block_diagram/counter.png)
+![Counter Logic Diagram](./block_diagram/counter.png)
 
 The logic consists of a 64-bit register with prioritized synchronous control. The highest priority is given to the `counter_clear` signal, followed by the direct write signals (`counter_write_sel`), and finally the increment logic enabled by `cnt_en`.
 
 #### Waveform Analysis
 
-![Counter waveform](../waveform/image/counter_write.png)
+![Counter waveform](./waveform/image/counter_write.png)
 
 This waveform shows how the testbench can directly load a value into the 64-bit counter register.
 
@@ -237,13 +237,13 @@ This module implements the interrupt generation and status logic. Its operation 
 
 #### Logic Diagram
 
-![Interrupt logic logic diagram](../block_diagram/interrupt.png)
+![Interrupt logic logic diagram](./block_diagram/interrupt.png)
 
 The logic is composed of three main parts: the 64-bit equality comparator, the D-flip-flop for `interrupt_status` with asynchronous clear and synchronous set logic, and the final AND gate for the output masking.
 
 #### Waveform Analysis
 
-![Interrupt waveform](../waveform/image/interrupt.png)
+![Interrupt waveform](./waveform/image/interrupt.png)
 
 This waveform demonstrates the full interrupt lifecycle.
 
