@@ -123,10 +123,8 @@ module test_bench;
             tim_penable <= 1'b1;
 
             @(posedge sys_clk);
-
-            captured_data = tim_prdata;
-
             @(posedge sys_clk);
+            captured_data = tim_prdata;
             tim_psel    <= 1'b0;
             tim_penable <= 1'b0;
         end
@@ -266,36 +264,45 @@ module test_bench;
         // --- TEST: COUNT_DEFAULT_MODE ---
         $display(`CYAN, "%0t TEST: COUNT_DEFAULT_MODE...", $realtime, `RESET);
         // enable the timer_en and div_en
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0000, 4'h2);
+
+        // reset sequence
         do_write(TCR_ADDR, 32'h1, 4'h1);
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'h1);  
+
+        // start counting
         do_write(TCR_ADDR, 32'h1, 4'h1);
         wait_cycles(10);
         do_read(TDR0_ADDR, count);
 
-        if (count === (32'd10 + 32'd02)) begin
+        if (count === (32'd13)) begin
             $display(`GREEN, "PASS: COUNT_DEFAULT_MODE successful.", `RESET);
         end else begin
-            $display(`RED, "FAIL: COUNT_DEFAULT_MODE failed. Expected 12, got %0d", count, `RESET);
+            $display(`RED, "FAIL: COUNT_DEFAULT_MODE failed. Expected 13, got %0d", count, `RESET);
         end
 
         // --- TEST: COUNT_DIV_MODE_ZERO ---
         $display(`CYAN, "%0t TEST: COUNT_DIV_MODE_ZERO...", $realtime, `RESET);
-        do_write(TCR_ADDR, 32'h0, 4'h1);      // Disable timer
+        do_write(TCR_ADDR, 32'h2, 4'h1);      // Disable timer
+        do_write(TCR_ADDR, 32'h0, 4'hF);      // Clear all
         do_write(TCR_ADDR, 32'h0000, 4'h2);   // Set div_val = 0
         do_write(TCR_ADDR, 32'h3, 4'h1);      // Enable timer_en and div_en
         wait_cycles(15);
         do_read(TDR0_ADDR, count);
 
-        if (count === (32'd15 + 32'd02)) begin
+        if (count === (32'd18)) begin
             $display(`GREEN, "PASS: COUNT_DIV_MODE_ZERO successful. Counter increments every cycle.", `RESET);
         end else begin
-            $display(`RED, "FAIL: COUNT_DIV_MODE_ZERO failed. Expected 17, got %0d", count, `RESET);
+            $display(`RED, "FAIL: COUNT_DIV_MODE_ZERO failed. Expected 18, got %0d", count, `RESET);
         end
 
         // --- TEST: COUNT_DIV_MODE ---
         $display(`CYAN, "%0t TEST: COUNT_DIV_MODE...", $realtime, `RESET);
         // div_val = 2
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);      // Clear all
         do_write(TCR_ADDR, 32'h0100, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(10);
@@ -308,7 +315,8 @@ module test_bench;
         end
 
         // div_val = 4
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0200, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(20);
@@ -321,7 +329,8 @@ module test_bench;
         end
 
         // div_val = 8
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0300, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(40);
@@ -334,7 +343,8 @@ module test_bench;
         end
 
         // div_val = 16
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0400, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(80);
@@ -347,7 +357,8 @@ module test_bench;
         end
 
         // div_val = 32
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0500, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(160);
@@ -360,7 +371,8 @@ module test_bench;
         end
 
         // div_val = 64
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0600, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(320);
@@ -373,7 +385,8 @@ module test_bench;
         end
 
         // div_val = 128
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0700, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(640);
@@ -386,7 +399,8 @@ module test_bench;
         end
 
         // div_val = 256
-        do_write(TCR_ADDR, 32'h0, 4'h1);
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h0800, 4'h2);
         do_write(TCR_ADDR, 32'h3, 4'h1);
         wait_cycles(1280);
@@ -401,6 +415,8 @@ module test_bench;
         // --- TEST: COUNT_CLEAR_ON_DISABLE ---
         $display(`CYAN, "%0t TEST: COUNT_CLEAR_ON_DISABLE...", $realtime, `RESET);
 
+        do_write(TCR_ADDR, 32'h2, 4'h1);
+        do_write(TCR_ADDR, 32'h0, 4'hF);  
         do_write(TCR_ADDR, 32'h1, 4'h1);
         wait_cycles(5);
         do_write(TCR_ADDR, 32'h0, 4'h1);
@@ -644,10 +660,10 @@ module test_bench;
         wait_cycles(5);
         do_read(TDR0_ADDR, tdr0);
         do_read(TDR1_ADDR, tdr1);
-        if ( tdr0 === (32'd4 + 32'd2) && tdr1 === 32'd1 ) begin
+        if ( tdr0 === (32'd7) && tdr1 === 32'd1 ) begin
              $display(`GREEN, "PASS: COUNT_ROLLOVER_32B successful.", `RESET);
         end else begin
-             $display(`RED, "FAIL: COUNT_ROLLOVER_32B failed. Expected {1, 6}, got {%0h, %0h}", tdr1, tdr0, `RESET);
+             $display(`RED, "FAIL: COUNT_ROLLOVER_32B failed. Expected {1, 7}, got {%0h, %0h}", tdr1, tdr0, `RESET);
         end
         do_write(TCR_ADDR, 32'd0, 4'h1); 
 
@@ -703,8 +719,8 @@ module test_bench;
         @(posedge sys_clk);
         tim_penable <= 1'b1; 
         @(posedge sys_clk);
-        data = tim_prdata; 
         @(posedge sys_clk);
+        data = tim_prdata; 
         tim_psel    <= 1'b0; 
         tim_penable <= 1'b0;
         if (data === 32'hCAFED00D) begin
